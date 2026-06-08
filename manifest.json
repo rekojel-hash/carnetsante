@@ -4,8 +4,8 @@
   "description": "Un carnet de santé sécurisé, local-first et open-source.",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#F8FAFC",
-  "theme_color": "#4F46E5",
+  "background_color": "#FCFBF8",
+  "theme_color": "#9DAF7B",
   "orientation": "portrait",
   "categories": ["medical", "health"],
   "icons": [
