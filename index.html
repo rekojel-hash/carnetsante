@@ -1,625 +1,361 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Cocon Santé</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#9DAF7B">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+// --- ROUTAGE ONGLETS ---
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('nav button').forEach(btn => {
+        btn.className = "flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 text-nature-muted hover:text-olive-dark";
+    });
+
+    document.getElementById(tabId).classList.remove('hidden');
+    const activeBtn = document.getElementById('btn-' + tabId);
+    activeBtn.className = "flex-1 py-3 text-center text-olive-dark font-semibold border-t-4 border-olive-pastel flex flex-col items-center gap-1 transition-all duration-300";
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        // Palette Principale : Chaud & Olive
-                        nature: {
-                            background: '#FCFBF8', // Crème très clair chaleureux
-                            card: '#FFFFFF',
-                            text: '#4A4232',       // Brun-gris doux (pas de noir pur)
-                            muted: '#8C8471',     // Texte secondaire doux
-                            accent: '#F5F2EA',    // Fond d'accentuation léger
-                        },
-                        olive: {
-                            pastel: '#9DAF7B',    // Vert Olive Doux (Principal)
-                            dark: '#5F6F41',       // Pour titres et boutons
-                            light: '#E2E9D4',     // Fills légers et bordures
-                            hover: '#829161'
-                        },
-                        warm: {
-                            // Remplacement du Rouge/Ambre par Terre Cuite/Vieux Rose
-                            danger: '#A85A5A',    // Vieux Rose foncé (suppression)
-                            dangerlight: '#E7CFCF', // Vieux Rose clair
-                            warning: '#C68E5F',   // Terre Cuite douce
-                            warninglight: '#F1E2D3'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        /* Adoucir les polices par défaut */
-        body { color: #4A4232; }
-        h1, h2, h3, h4 { font-weight: 800; color: #5F6F41; tracking: -0.025em; }
-        
-        /* Personnalisation des inputs pour le thème warm */
-        input[type="date"], input[type="number"], input[type="text"], input[type="time"] {
-            color: #4A4232;
-        }
-        input::placeholder { color: #8C8471; opacity: 0.7; }
-        
-        /* Masquer la scrollbar pour une esthétique épurée */
-        ::-webkit-scrollbar { display: none; }
-    </style>
-</head>
-<body class="bg-nature-background font-sans pb-28 antialiased">
+    if(tabId === 'growth-tab') {
+        initOrUpdateChart();
+    }
+}
 
-    <header class="bg-olive-pastel text-white shadow-sm p-5 sticky top-0 z-50 rounded-b-3xl">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-extrabold tracking-tighter flex items-center gap-2.5 text-white">
-                    <span>🌿</span> Mon Cocon Santé
-                </h1>
-                <p class="text-xs text-olive-light opacity-90 mt-0.5">Votre histoire médicale, en toute intimité.</p>
-            </div>
-            <span class="text-xs bg-white/20 border border-white/30 px-2.5 py-1 rounded-full font-mono text-white/90">v1.2</span>
-        </div>
-    </header>
+// --- DEMARRAGE ---
+let chartInstance = null;
+const olivePastel = '#9DAF7B';
+const oliveDark = '#5F6F41';
+const oliveLight = '#E2E9D4';
+const warmWarning = '#C68E5F';
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-olive-light/50 shadow-lg z-50 rounded-t-3xl">
-        <div class="max-w-md mx-auto flex justify-around text-nature-muted py-2">
-            <button onclick="switchTab('growth-tab')" id="btn-growth-tab" class="flex-1 py-3 text-center text-olive-dark font-semibold border-t-4 border-olive-pastel flex flex-col items-center gap-1 transition-all duration-300">
-                <span class="text-xl">📈</span><span class="text-[11px]">Croissance</span>
-            </button>
-            <button onclick="switchTab('vaccine-tab')" id="btn-vaccine-tab" class="flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 hover:text-olive-dark">
-                <span class="text-xl">💉</span><span class="text-[11px]">Vaccins</span>
-            </button>
-            <button onclick="switchTab('pathology-tab')" id="btn-pathology-tab" class="flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 hover:text-olive-dark">
-                <span class="text-xl">🩹</span><span class="text-[11px]">Histoires</span>
-            </button>
-            <button onclick="switchTab('appointments-tab')" id="btn-appointments-tab" class="flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 hover:text-olive-dark">
-                <span class="text-xl">📅</span><span class="text-[11px]">RDV</span>
-            </button>
-            <button onclick="switchTab('settings-tab')" id="btn-settings-tab" class="flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 hover:text-olive-dark">
-                <span class="text-xl">⚙️</span><span class="text-[11px]">Options</span>
-            </button>
-        </div>
-    </nav>
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const datesToSet = ['measureDate', 'pathoDate', 'apptDate'];
+    datesToSet.forEach(id => {
+        if(document.getElementById(id)) document.getElementById(id).value = today;
+    });
 
-    <main class="max-w-md mx-auto p-5 space-y-7">
+    displayGrowthData();
+    initOrUpdateChart();
+    displayVaccines();
+    displayPathologies();
+    displayAppointments();
+});
 
-        <div id="growth-tab" class="space-y-7 tab-content">
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4 flex items-center gap-2.5"><span>🍃</span> Noter une nouvelle mesure</h2>
-                <form id="growthForm" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Date du relevé</label>
-                        <input type="date" id="measureDate" required class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm transition">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-nature-muted mb-1.5">Poids (kg)</label>
-                            <input type="number" id="weight" step="0.01" required placeholder="ex: 4.25" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-nature-muted mb-1.5">Taille (cm)</label>
-                            <input type="number" id="height" step="0.1" required placeholder="ex: 54" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm transition">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-olive-dark text-white font-bold py-3 rounded-xl shadow hover:bg-olive-hover transition active:scale-[0.97]">
-                        Enregistrer doucement
-                    </button>
-                </form>
-            </section>
+// --- MODULE 1 : CROISSANCE ---
+const growthForm = document.getElementById('growthForm');
+if(growthForm) {
+    growthForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newData = {
+            id: Date.now(),
+            date: document.getElementById('measureDate').value,
+            weight: parseFloat(document.getElementById('weight').value),
+            height: parseFloat(document.getElementById('height').value)
+        };
+        const history = JSON.parse(localStorage.getItem('health_growth')) || [];
+        history.push(newData);
+        history.sort((a, b) => new Date(a.date) - new Date(b.date));
+        localStorage.setItem('health_growth', JSON.stringify(history));
+        growthForm.reset();
+        document.getElementById('measureDate').value = new Date().toISOString().split('T')[0];
+        displayGrowthData();
+        initOrUpdateChart();
+    });
+}
 
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4 flex items-center gap-2.5"><span>📉</span> Sa courbe d'évolution</h2>
-                <div class="relative w-full h-64">
-                    <canvas id="growthChart"></canvas>
-                </div>
-            </section>
+function displayGrowthData() {
+    const history = JSON.parse(localStorage.getItem('health_growth')) || [];
+    const displayHistory = [...history].reverse();
+    const tbody = document.getElementById('historyTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
 
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4">Souvenirs des mesures</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="border-b border-olive-light text-nature-muted font-medium">
-                                <th class="pb-3">Date</th>
-                                <th class="pb-3">Poids</th>
-                                <th class="pb-3">Taille</th>
-                                <th class="pb-3 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody" class="divide-y divide-olive-light/30 font-medium"></tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+    if (displayHistory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-5 text-center text-nature-muted italic font-normal">Encore aucune petite note...</td></tr>`;
+        return;
+    }
 
+    displayHistory.forEach(item => {
+        const formattedDate = new Date(item.date).toLocaleDateString('fr-FR');
+        tbody.innerHTML += `
+            <tr class="hover:bg-nature-accent transition">
+                <td class="py-3.5 text-nature-text">${formattedDate}</td>
+                <td class="py-3.5 text-olive-dark font-bold">${item.weight} kg</td>
+                <td class="py-3.5 text-olive-pastel font-bold">${item.height} cm</td>
+                <td class="py-3.5 text-right">
+                    <button onclick="deleteGrowth(${item.id})" class="text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
+                </td>
+            </tr>`;
+    });
+}
 
-        <div id="vaccine-tab" class="space-y-7 tab-content hidden">
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <div class="mb-5">
-                    <h2 class="text-xl font-bold">Petit rappel des protections</h2>
-                    <p class="text-xs text-nature-muted mt-1">Le calendrier des vaccins, pour grandir sereinement.</p>
-                </div>
-                <div id="vaccineList" class="space-y-4"></div>
-            </section>
-        </div>
+function deleteGrowth(id) {
+    let history = JSON.parse(localStorage.getItem('health_growth')) || [];
+    history = history.filter(item => item.id !== id);
+    localStorage.setItem('health_growth', JSON.stringify(history));
+    displayGrowthData();
+    initOrUpdateChart();
+}
 
+function initOrUpdateChart() {
+    const history = JSON.parse(localStorage.getItem('health_growth')) || [];
+    const canvas = document.getElementById('growthChart');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-        <div id="pathology-tab" class="space-y-7 tab-content hidden">
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4 flex items-center gap-2.5"><span>🩹</span> Raconter un petit bobo</h2>
-                <form id="pathologyForm" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Quel était le souci ?</label>
-                        <input type="text" id="pathoName" required placeholder="ex: Otite, Fièvre, Poussée dentaire" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Quand cela a-t-il commencé ?</label>
-                        <input type="date" id="pathoDate" required class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Le soin apporté (optionnel)</label>
-                        <input type="text" id="pathoTreatment" placeholder="ex: Sirop, Repos, Câlins" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                    </div>
-                    <div class="flex items-center gap-2.5 pt-1">
-                        <input type="checkbox" id="pathoOngoing" class="w-5 h-5 text-olive-dark border-olive-light/70 rounded focus:ring-olive-pastel cursor-pointer">
-                        <label for="pathoOngoing" class="text-sm font-medium text-nature-text">C'est encore un peu là...</label>
-                    </div>
-                    <button type="submit" class="w-full bg-olive-dark text-white font-bold py-3 rounded-xl shadow hover:bg-olive-hover transition active:scale-[0.97]">
-                        Ajouter à son histoire
-                    </button>
-                </form>
-            </section>
+    const labels = history.map(item => new Date(item.date).toLocaleDateString('fr-FR'));
+    const weights = history.map(item => item.weight);
+    const heights = history.map(item => item.height);
 
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4">Le journal des bobos guéris</h2>
-                <div id="pathologyList" class="space-y-4"></div>
-            </section>
-        </div>
+    if (chartInstance) chartInstance.destroy();
 
-
-        <div id="appointments-tab" class="space-y-7 tab-content hidden">
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4 flex items-center gap-2.5"><span>📅</span> Planifier une douce visite</h2>
-                <form id="appointmentForm" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-nature-muted mb-1.5">Quel jour ?</label>
-                            <input type="date" id="apptDate" required class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-nature-muted mb-1.5">À quelle heure ?</label>
-                            <input type="time" id="apptTime" required class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Qui allons-nous voir ?</label>
-                        <input type="text" id="apptDoctor" required placeholder="ex: Dr. Douceur (Pédiatre)" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-nature-muted mb-1.5">Une petite note ? (optionnel)</label>
-                        <input type="text" id="apptNotes" placeholder="ex: Rappel vaccin, Contrôle annuel" class="w-full p-3 bg-nature-accent border border-olive-light/50 rounded-xl outline-none focus:ring-2 focus:ring-olive-pastel text-sm Transition">
-                    </div>
-                    <button type="submit" class="w-full bg-olive-dark text-white font-bold py-3 rounded-xl shadow hover:bg-olive-hover transition active:scale-[0.97]">
-                        Planifier ce moment
-                    </button>
-                </form>
-            </section>
-
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30">
-                <h2 class="text-xl font-bold mb-4">L'agenda des prochains sourires</h2>
-                <div id="appointmentList" class="space-y-4"></div>
-            </section>
-        </div>
-
-
-        <div id="settings-tab" class="space-y-7 tab-content hidden">
-            <section class="bg-white p-7 rounded-3xl shadow-sm border border-olive-light/30 text-center">
-                <span class="text-5xl">🔒</span>
-                <h2 class="text-xl font-bold mt-3">Un espace rien qu'à vous</h2>
-                <p class="text-xs text-nature-muted mt-2 px-3 leading-relaxed">
-                    Vos souvenirs et données médicales restent bien au chaud dans votre téléphone. Rien n'en sort, c'est promis.
-                </p>
-            </section>
-
-            <section class="bg-white p-6 rounded-3xl shadow-sm border border-olive-light/30 space-y-5">
-                <h3 class="text-lg font-bold">Garder une trace ailleurs</h3>
-                <p class="text-xs text-nature-muted">Pensez à faire une copie de son carnet de temps en temps, juste pour être serein.</p>
-                
-                <div class="grid grid-cols-1 gap-3">
-                    <button onclick="exportData()" class="w-full bg-olive-pastel text-white text-sm font-bold py-3.5 rounded-xl shadow hover:bg-olive-hover transition flex items-center justify-center gap-2.5">
-                        <span>📤</span> Mettre le carnet à l'abri (.json)
-                    </button>
-                    
-                    <label class="w-full bg-nature-accent border border-olive-light text-olive-dark text-sm font-bold py-3.5 rounded-xl shadow-inner hover:bg-olive-light/50 transition flex items-center justify-center gap-2.5 cursor-pointer text-center">
-                        <span>📥</span> Retrouver un carnet (.json)
-                        <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
-                    </label>
-                </div>
-            </section>
-
-            <section class="bg-warm-dangerlight p-6 rounded-3xl border border-warm-danger/20 space-y-3">
-                <h3 class="text-sm font-bold text-warm-danger">Zone de grande prudence</h3>
-                <p class="text-xs text-warm-danger/80">Cette action effacera tout le contenu de ce carnet sur ce téléphone.</p>
-                <button onclick="clearAllData()" class="bg-warm-danger text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-red-700 transition active:scale-[0.97]">
-                    Effacer tout le cocon
-                </button>
-            </section>
-        </div>
-
-    </main>
-
-    <script>
-        // --- ROUTAGE ONGLETS ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('nav button').forEach(btn => {
-                btn.className = "flex-1 py-3 text-center font-medium border-t-4 border-transparent flex flex-col items-center gap-1 transition-all duration-300 text-nature-muted hover:text-olive-dark";
-            });
-
-            document.getElementById(tabId).classList.remove('hidden');
-            const activeBtn = document.getElementById('btn-' + tabId);
-            activeBtn.className = "flex-1 py-3 text-center text-olive-dark font-semibold border-t-4 border-olive-pastel flex flex-col items-center gap-1 transition-all duration-300";
-            
-            if(tabId === 'growth-tab') {
-                initOrUpdateChart();
-            }
-        }
-
-        // --- DEMARRAGE ---
-        let chartInstance = null;
-        const olivePastel = '#9DAF7B';
-        const oliveDark = '#5F6F41';
-        const oliveLight = '#E2E9D4';
-        const warmWarning = '#C68E5F';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date().toISOString().split('T')[0];
-            const datesToSet = ['measureDate', 'pathoDate', 'apptDate'];
-            datesToSet.forEach(id => {
-                if(document.getElementById(id)) document.getElementById(id).value = today;
-            });
-
-            displayGrowthData();
-            initOrUpdateChart();
-            displayVaccines();
-            displayPathologies();
-            displayAppointments();
-        });
-
-        // --- MODULE 1 : CROISSANCE ---
-        const growthForm = document.getElementById('growthForm');
-        if(growthForm) {
-            growthForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newData = {
-                    id: Date.now(),
-                    date: document.getElementById('measureDate').value,
-                    weight: parseFloat(document.getElementById('weight').value),
-                    height: parseFloat(document.getElementById('height').value)
-                };
-                const history = JSON.parse(localStorage.getItem('health_growth')) || [];
-                history.push(newData);
-                history.sort((a, b) => new Date(a.date) - new Date(b.date));
-                localStorage.setItem('health_growth', JSON.stringify(history));
-                growthForm.reset();
-                document.getElementById('measureDate').value = new Date().toISOString().split('T')[0];
-                displayGrowthData();
-                initOrUpdateChart();
-            });
-        }
-
-        function displayGrowthData() {
-            const history = JSON.parse(localStorage.getItem('health_growth')) || [];
-            const displayHistory = [...history].reverse();
-            const tbody = document.getElementById('historyTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-
-            if (displayHistory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-5 text-center text-nature-muted italic font-normal">Encore aucune petite note...</td></tr>`;
-                return;
-            }
-
-            displayHistory.forEach(item => {
-                const formattedDate = new Date(item.date).toLocaleDateString('fr-FR');
-                tbody.innerHTML += `
-                    <tr class="hover:bg-nature-accent transition">
-                        <td class="py-3.5 text-nature-text">${formattedDate}</td>
-                        <td class="py-3.5 text-olive-dark font-bold">${item.weight} kg</td>
-                        <td class="py-3.5 text-olive-pastel font-bold">${item.height} cm</td>
-                        <td class="py-3.5 text-right">
-                            <button onclick="deleteGrowth(${item.id})" class="text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
-                        </td>
-                    </tr>`;
-            });
-        }
-
-        function deleteGrowth(id) {
-            let history = JSON.parse(localStorage.getItem('health_growth')) || [];
-            history = history.filter(item => item.id !== id);
-            localStorage.setItem('health_growth', JSON.stringify(history));
-            displayGrowthData();
-            initOrUpdateChart();
-        }
-
-        function initOrUpdateChart() {
-            const history = JSON.parse(localStorage.getItem('health_growth')) || [];
-            const canvas = document.getElementById('growthChart');
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
-
-            const labels = history.map(item => new Date(item.date).toLocaleDateString('fr-FR'));
-            const weights = history.map(item => item.weight);
-            const heights = history.map(item => item.height);
-
-            if (chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Poids (kg)',
-                            data: weights,
-                            borderColor: oliveDark,
-                            backgroundColor: 'rgba(95, 111, 65, 0.07)',
-                            yAxisID: 'y-weight',
-                            tension: 0.3,
-                            fill: true,
-                            borderWidth: 3
-                        },
-                        {
-                            label: 'Taille (cm)',
-                            data: heights,
-                            borderColor: olivePastel,
-                            backgroundColor: 'transparent',
-                            yAxisID: 'y-height',
-                            tension: 0.3,
-                            borderWidth: 3
-                        }
-                    ]
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Poids (kg)',
+                    data: weights,
+                    borderColor: oliveDark,
+                    backgroundColor: 'rgba(95, 111, 65, 0.07)',
+                    yAxisID: 'y-weight',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#4A4232', font: { weight: 'semibold', size: 12 } } } },
-                    scales: {
-                        x: { ticks: { color: '#8C8471' }, grid: { display: false } },
-                        'y-weight': { type: 'linear', position: 'left', ticks: { color: oliveDark }, title: { display: true, text: 'kg', color: oliveDark, font: { size: 11, weight: 'bold' } }, grid: { color: 'rgba(226, 233, 212, 0.5)' } },
-                        'y-height': { type: 'linear', position: 'right', ticks: { color: olivePastel }, grid: { drawOnChartArea: false }, title: { display: true, text: 'cm', color: olivePastel, font: { size: 11, weight: 'bold' } } }
-                    }
+                {
+                    label: 'Taille (cm)',
+                    data: heights,
+                    borderColor: olivePastel,
+                    backgroundColor: 'transparent',
+                    yAxisID: 'y-height',
+                    tension: 0.3,
+                    borderWidth: 3
                 }
-            });
-        }
-
-        // --- MODULE 2 : VACCINS ---
-        const defaultVaccines = [
-            { id: 'dtp1', name: 'DTP (1ère dose)', age: '2 mois' },
-            { id: 'dtp2', name: 'DTP (2ème dose)', age: '4 mois' },
-            { id: 'dtp3', name: 'DTP (Rappel)', age: '11 mois' },
-            { id: 'ror1', name: 'ROR (1ère dose)', age: '12 mois' },
-            { id: 'ror2', name: 'ROR (2ème dose)', age: '16-18 mois' },
-            { id: 'men1', name: 'Méningocoque C', age: '5 et 12 mois' },
-            { id: 'pneumo', name: 'Pneumocoque (Rappels)', age: '2, 4, 11 mois' },
-            { id: 'dtp_all', name: 'Rappel DTP (Adulte)', age: '25, 45, 65 ans...' }
-        ];
-
-        function displayVaccines() {
-            const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
-            const container = document.getElementById('vaccineList');
-            if(!container) return;
-            container.innerHTML = '';
-
-            defaultVaccines.forEach(vac => {
-                const data = userVaccines[vac.id] || { done: false, date: '' };
-                container.innerHTML += `
-                    <div class="p-4 border rounded-2xl transition duration-300 ${data.done ? 'bg-olive-light border-olive-pastel text-olive-dark' : 'bg-nature-accent border-olive-light/70'} flex flex-col gap-2.5">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h4 class="font-bold text-sm text-nature-text ${data.done ? 'text-olive-dark' : ''}">${vac.name}</h4>
-                                <p class="text-[11px] text-nature-muted mt-0.5">Grand moment conseillé : ${vac.age}</p>
-                            </div>
-                            <input type="checkbox" onchange="toggleVaccine('${vac.id}', this.checked)" ${data.done ? 'checked' : ''} class="w-6 h-6 text-olive-dark border-olive-light rounded focus:ring-olive-pastel cursor-pointer transition">
-                        </div>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[11px] font-semibold text-nature-muted">Fait ce doux jour :</span>
-                            <input type="date" value="${data.date}" onchange="updateVaccineDate('${vac.id}', this.value)" class="text-xs p-1.5 border border-olive-light rounded-lg outline-none bg-white font-medium text-nature-text transition">
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function toggleVaccine(id, isChecked) {
-            const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
-            if (!userVaccines[id]) userVaccines[id] = { done: false, date: '' };
-            userVaccines[id].done = isChecked;
-            localStorage.setItem('health_vaccines', JSON.stringify(userVaccines));
-            displayVaccines();
-        }
-
-        function updateVaccineDate(id, dateValue) {
-            const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
-            if (!userVaccines[id]) userVaccines[id] = { done: false, date: '' };
-            userVaccines[id].date = dateValue;
-            localStorage.setItem('health_vaccines', JSON.stringify(userVaccines));
-            displayVaccines();
-        }
-
-        // --- MODULE 3 : PATHOLOGIES ---
-        const pathologyForm = document.getElementById('pathologyForm');
-        if(pathologyForm) {
-            pathologyForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newPatho = {
-                    id: Date.now(),
-                    name: document.getElementById('pathoName').value,
-                    date: document.getElementById('pathoDate').value,
-                    treatment: document.getElementById('pathoTreatment').value,
-                    ongoing: document.getElementById('pathoOngoing').checked
-                };
-                const pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
-                pathologies.push(newPatho);
-                pathologies.sort((a, b) => new Date(b.date) - new Date(a.date));
-                localStorage.setItem('health_pathologies', JSON.stringify(pathologies));
-                pathologyForm.reset();
-                document.getElementById('pathoDate').value = new Date().toISOString().split('T')[0];
-                displayPathologies();
-            });
-        }
-
-        function displayPathologies() {
-            const pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
-            const container = document.getElementById('pathologyList');
-            if(!container) return;
-            container.innerHTML = '';
-
-            if(pathologies.length === 0) {
-                container.innerHTML = `<p class="text-xs text-nature-muted text-center py-5 italic">Juste plein de rires pour l'instant !</p>`;
-                return;
-            }
-
-            pathologies.forEach(p => {
-                const formattedDate = new Date(p.date).toLocaleDateString('fr-FR');
-                container.innerHTML += `
-                    <div class="p-4 border border-olive-light/50 rounded-2xl bg-white transition hover:border-olive-light relative">
-                        <button onclick="deletePatho(${p.id})" class="absolute top-3.5 right-3.5 text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
-                        <div class="flex items-center gap-2.5">
-                            <span class="font-bold text-sm text-nature-text">${p.name}</span>
-                            ${p.ongoing ? '<span class="text-[10px] bg-warm-warninglight text-warm-warning font-bold px-2 py-0.5 rounded-full">Encore là...</span>' : '<span class="text-[10px] bg-olive-light text-olive-dark font-bold px-2 py-0.5 rounded-full">Guéri !</span>'}
-                        </div>
-                        <p class="text-xs text-nature-muted mt-1">Découvert le : ${formattedDate}</p>
-                        ${p.treatment ? `<p class="text-xs text-olive-dark mt-2.5 font-medium bg-nature-accent p-2 rounded-lg">🌿 Soin : <span class="text-nature-text">${p.treatment}</span></p>` : ''}
-                    </div>`;
-            });
-        }
-
-        function deletePatho(id) {
-            let pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
-            pathologies = pathologies.filter(item => item.id !== id);
-            localStorage.setItem('health_pathologies', JSON.stringify(pathologies));
-            displayPathologies();
-        }
-
-        // --- MODULE 4 : RENDEZ-VOUS ---
-        const appointmentForm = document.getElementById('appointmentForm');
-        if(appointmentForm) {
-            appointmentForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newAppt = {
-                    id: Date.now(),
-                    date: document.getElementById('apptDate').value,
-                    time: document.getElementById('apptTime').value,
-                    doctor: document.getElementById('apptDoctor').value,
-                    notes: document.getElementById('apptNotes').value
-                };
-                const appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
-                appts.push(newAppt);
-                appts.sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
-                localStorage.setItem('health_appointments', JSON.stringify(appts));
-                appointmentForm.reset();
-                document.getElementById('apptDate').value = new Date().toISOString().split('T')[0];
-                displayAppointments();
-            });
-        }
-
-        function displayAppointments() {
-            const appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
-            const container = document.getElementById('appointmentList');
-            if(!container) return;
-            container.innerHTML = '';
-
-            if(appts.length === 0) {
-                container.innerHTML = `<p class="text-xs text-nature-muted text-center py-5 italic">Juste plein de temps pour jouer.</p>`;
-                return;
-            }
-
-            const now = new Date();
-
-            appts.forEach(a => {
-                const apptDateTime = new Date(a.date + 'T' + a.time);
-                const isPast = apptDateTime < now;
-                const formattedDate = apptDateTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
-                
-                container.innerHTML += `
-                    <div class="p-4 border rounded-2xl transition duration-300 relative ${isPast ? 'bg-nature-accent border-olive-light/50 text-nature-muted' : 'bg-olive-light/30 border-olive-light border-l-4 border-l-olive-pastel'}">
-                        <button onclick="deleteAppt(${a.id})" class="absolute top-3.5 right-3.5 text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
-                        <p class="text-xs font-bold capitalize ${isPast ? 'text-nature-muted line-through' : 'text-olive-dark'}">${formattedDate} à ${a.time}</p>
-                        <h4 class="font-bold text-sm text-nature-text mt-1 ${isPast ? 'text-nature-muted' : ''}">${a.doctor}</h4>
-                        ${a.notes ? `<p class="text-xs mt-1.5 italic ${isPast ? 'text-nature-muted/70' : 'text-nature-muted'}">${a.notes}</p>` : ''}
-                    </div>`;
-            });
-        }
-
-        function deleteAppt(id) {
-            let appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
-            appts = appts.filter(item => item.id !== id);
-            localStorage.setItem('health_appointments', JSON.stringify(appts));
-            displayAppointments();
-        }
-
-        // --- MODULE 5 : SAUVEGARDE & IMPORT ---
-        function exportData() {
-            const data = {
-                health_growth: JSON.parse(localStorage.getItem('health_growth')) || [],
-                health_vaccines: JSON.parse(localStorage.getItem('health_vaccines')) || {},
-                health_pathologies: JSON.parse(localStorage.getItem('health_pathologies')) || [],
-                health_appointments: JSON.parse(localStorage.getItem('health_appointments')) || []
-            };
-            const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", jsonString);
-            downloadAnchor.setAttribute("download", `mon_cocon_sante_backup_${new Date().toISOString().split('T')[0]}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if(data.health_growth) localStorage.setItem('health_growth', JSON.stringify(data.health_growth));
-                    if(data.health_vaccines) localStorage.setItem('health_vaccines', JSON.stringify(data.health_vaccines));
-                    if(data.health_pathologies) localStorage.setItem('health_pathologies', JSON.stringify(data.health_pathologies));
-                    if(data.health_appointments) localStorage.setItem('health_appointments', JSON.stringify(data.health_appointments));
-                    
-                    alert('Douce synchronisation réussie ! Le carnet est à jour.');
-                    window.location.reload();
-                } catch (err) {
-                    alert('Mince, ce fichier n\\'est pas le bon...');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function clearAllData() {
-            if(confirm('Êtes-vous absolument sûr de vouloir effacer TOUT le cocon ? Vos douces données seront perdues à jamais.')) {
-                localStorage.clear();
-                window.location.reload();
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#4A4232', font: { weight: 'semibold', size: 12 } } } },
+            scales: {
+                x: { ticks: { color: '#8C8471' }, grid: { display: false } },
+                'y-weight': { type: 'linear', position: 'left', ticks: { color: oliveDark }, title: { display: true, text: 'kg', color: oliveDark, font: { size: 11, weight: 'bold' } }, grid: { color: 'rgba(226, 233, 212, 0.5)' } },
+                'y-height': { type: 'linear', position: 'right', ticks: { color: olivePastel }, grid: { drawOnChartArea: false }, title: { display: true, text: 'cm', color: olivePastel, font: { size: 11, weight: 'bold' } } }
             }
         }
+    });
+}
 
-        // --- SERVICE WORKER (PWA) ---
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log('Cocon actif.'))
-                .catch(err => console.error('Mince, souci PWA:', err));
+// --- MODULE 2 : VACCINS ---
+const defaultVaccines = [
+    { id: 'dtp1', name: 'DTP (1ère dose)', age: '2 mois' },
+    { id: 'dtp2', name: 'DTP (2ème dose)', age: '4 mois' },
+    { id: 'dtp3', name: 'DTP (Rappel)', age: '11 mois' },
+    { id: 'ror1', name: 'ROR (1ère dose)', age: '12 mois' },
+    { id: 'ror2', name: 'ROR (2ème dose)', age: '16-18 mois' },
+    { id: 'men1', name: 'Méningocoque C', age: '5 et 12 mois' },
+    { id: 'pneumo', name: 'Pneumocoque (Rappels)', age: '2, 4, 11 mois' },
+    { id: 'dtp_all', name: 'Rappel DTP (Adulte)', age: '25, 45, 65 ans...' }
+];
+
+function displayVaccines() {
+    const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
+    const container = document.getElementById('vaccineList');
+    if(!container) return;
+    container.innerHTML = '';
+
+    defaultVaccines.forEach(vac => {
+        const data = userVaccines[vac.id] || { done: false, date: '' };
+        container.innerHTML += `
+            <div class="p-4 border rounded-2xl transition duration-300 ${data.done ? 'bg-olive-light border-olive-pastel text-olive-dark' : 'bg-nature-accent border-olive-light/70'} flex flex-col gap-2.5">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h4 class="font-bold text-sm text-nature-text ${data.done ? 'text-olive-dark' : ''}">${vac.name}</h4>
+                        <p class="text-[11px] text-nature-muted mt-0.5">Grand moment conseillé : ${vac.age}</p>
+                    </div>
+                    <input type="checkbox" onchange="toggleVaccine('${vac.id}', this.checked)" ${data.done ? 'checked' : ''} class="w-6 h-6 text-olive-dark border-olive-light rounded focus:ring-olive-pastel cursor-pointer transition">
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[11px] font-semibold text-nature-muted">Fait ce doux jour :</span>
+                    <input type="date" value="${data.date}" onchange="updateVaccineDate('${vac.id}', this.value)" class="text-xs p-1.5 border border-olive-light rounded-lg outline-none bg-white font-medium text-nature-text transition">
+                </div>
+            </div>`;
+    });
+}
+
+function toggleVaccine(id, isChecked) {
+    const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
+    if (!userVaccines[id]) userVaccines[id] = { done: false, date: '' };
+    userVaccines[id].done = isChecked;
+    localStorage.setItem('health_vaccines', JSON.stringify(userVaccines));
+    displayVaccines();
+}
+
+function updateVaccineDate(id, dateValue) {
+    const userVaccines = JSON.parse(localStorage.getItem('health_vaccines')) || {};
+    if (!userVaccines[id]) userVaccines[id] = { done: false, date: '' };
+    userVaccines[id].date = dateValue;
+    localStorage.setItem('health_vaccines', JSON.stringify(userVaccines));
+    displayVaccines();
+}
+
+// --- MODULE 3 : PATHOLOGIES ---
+const pathologyForm = document.getElementById('pathologyForm');
+if(pathologyForm) {
+    pathologyForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newPatho = {
+            id: Date.now(),
+            name: document.getElementById('pathoName').value,
+            date: document.getElementById('pathoDate').value,
+            treatment: document.getElementById('pathoTreatment').value,
+            ongoing: document.getElementById('pathoOngoing').checked
+        };
+        const pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
+        pathologies.push(newPatho);
+        pathologies.sort((a, b) => new Date(b.date) - new Date(a.date));
+        localStorage.setItem('health_pathologies', JSON.stringify(pathologies));
+        pathologyForm.reset();
+        document.getElementById('pathoDate').value = new Date().toISOString().split('T')[0];
+        displayPathologies();
+    });
+}
+
+function displayPathologies() {
+    const pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
+    const container = document.getElementById('pathologyList');
+    if(!container) return;
+    container.innerHTML = '';
+
+    if(pathologies.length === 0) {
+        container.innerHTML = `<p class="text-xs text-nature-muted text-center py-5 italic">Juste plein de rires pour l'instant !</p>`;
+        return;
+    }
+
+    pathologies.forEach(p => {
+        const formattedDate = new Date(p.date).toLocaleDateString('fr-FR');
+        container.innerHTML += `
+            <div class="p-4 border border-olive-light/50 rounded-2xl bg-white transition hover:border-olive-light relative">
+                <button onclick="deletePatho(${p.id})" class="absolute top-3.5 right-3.5 text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
+                <div class="flex items-center gap-2.5">
+                    <span class="font-bold text-sm text-nature-text">${p.name}</span>
+                    ${p.ongoing ? '<span class="text-[10px] bg-warm-warninglight text-warm-warning font-bold px-2 py-0.5 rounded-full">Encore là...</span>' : '<span class="text-[10px] bg-olive-light text-olive-dark font-bold px-2 py-0.5 rounded-full">Guéri !</span>'}
+                </div>
+                <p class="text-xs text-nature-muted mt-1">Découvert le : ${formattedDate}</p>
+                ${p.treatment ? `<p class="text-xs text-olive-dark mt-2.5 font-medium bg-nature-accent p-2 rounded-lg">🌿 Soin : <span class="text-nature-text">${p.treatment}</span></p>` : ''}
+            </div>`;
+    });
+}
+
+function deletePatho(id) {
+    let pathologies = JSON.parse(localStorage.getItem('health_pathologies')) || [];
+    pathologies = pathologies.filter(item => item.id !== id);
+    localStorage.setItem('health_pathologies', JSON.stringify(pathologies));
+    displayPathologies();
+}
+
+// --- MODULE 4 : RENDEZ-VOUS ---
+const appointmentForm = document.getElementById('appointmentForm');
+if(appointmentForm) {
+    appointmentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newAppt = {
+            id: Date.now(),
+            date: document.getElementById('apptDate').value,
+            time: document.getElementById('apptTime').value,
+            doctor: document.getElementById('apptDoctor').value,
+            notes: document.getElementById('apptNotes').value
+        };
+        const appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
+        appts.push(newAppt);
+        appts.sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+        localStorage.setItem('health_appointments', JSON.stringify(appts));
+        appointmentForm.reset();
+        document.getElementById('apptDate').value = new Date().toISOString().split('T')[0];
+        displayAppointments();
+    });
+}
+
+function displayAppointments() {
+    const appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
+    const container = document.getElementById('appointmentList');
+    if(!container) return;
+    container.innerHTML = '';
+
+    if(appts.length === 0) {
+        container.innerHTML = `<p class="text-xs text-nature-muted text-center py-5 italic">Juste plein de temps pour jouer.</p>`;
+        return;
+    }
+
+    const now = new Date();
+
+    appts.forEach(a => {
+        const apptDateTime = new Date(a.date + 'T' + a.time);
+        const isPast = apptDateTime < now;
+        const formattedDate = apptDateTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+        
+        container.innerHTML += `
+            <div class="p-4 border rounded-2xl transition duration-300 relative ${isPast ? 'bg-nature-accent border-olive-light/50 text-nature-muted' : 'bg-olive-light/30 border-olive-light border-l-4 border-l-olive-pastel'}">
+                <button onclick="deleteAppt(${a.id})" class="absolute top-3.5 right-3.5 text-olive-light hover:text-warm-danger transition active:scale-90">❌</button>
+                <p class="text-xs font-bold capitalize ${isPast ? 'text-nature-muted line-through' : 'text-olive-dark'}">${formattedDate} à ${a.time}</p>
+                <h4 class="font-bold text-sm text-nature-text mt-1 ${isPast ? 'text-nature-muted' : ''}">${a.doctor}</h4>
+                ${a.notes ? `<p class="text-xs mt-1.5 italic ${isPast ? 'text-nature-muted/70' : 'text-nature-muted'}">${a.notes}</p>` : ''}
+            </div>`;
+    });
+}
+
+function deleteAppt(id) {
+    let appts = JSON.parse(localStorage.getItem('health_appointments')) || [];
+    appts = appts.filter(item => item.id !== id);
+    localStorage.setItem('health_appointments', JSON.stringify(appts));
+    displayAppointments();
+}
+
+// --- MODULE 5 : SAUVEGARDE & IMPORT ---
+function exportData() {
+    const data = {
+        health_growth: JSON.parse(localStorage.getItem('health_growth')) || [],
+        health_vaccines: JSON.parse(localStorage.getItem('health_vaccines')) || {},
+        health_pathologies: JSON.parse(localStorage.getItem('health_pathologies')) || [],
+        health_appointments: JSON.parse(localStorage.getItem('health_appointments')) || []
+    };
+    const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", jsonString);
+    downloadAnchor.setAttribute("download", `mon_cocon_sante_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if(data.health_growth) localStorage.setItem('health_growth', JSON.stringify(data.health_growth));
+            if(data.health_vaccines) localStorage.setItem('health_vaccines', JSON.stringify(data.health_vaccines));
+            if(data.health_pathologies) localStorage.setItem('health_pathologies', JSON.stringify(data.health_pathologies));
+            if(data.health_appointments) localStorage.setItem('health_appointments', JSON.stringify(data.health_appointments));
+            
+            alert('Douce synchronisation réussie ! Le carnet est à jour.');
+            window.location.reload();
+        } catch (err) {
+            // CORRECTION ICI : Utilisation des doubles guillemets pour éviter le conflit
+            alert("Mince, ce fichier n'est pas le bon...");
         }
-    </script>
-</body>
-</html>
+    };
+    reader.readAsText(file);
+}
+
+function clearAllData() {
+    if(confirm('Êtes-vous absolument sûr de vouloir effacer TOUT le cocon ? Vos douces données seront perdues à jamais.')) {
+        localStorage.clear();
+        window.location.reload();
+    }
+}
+
+// --- SERVICE WORKER (PWA) ---
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Cocon actif.'))
+        .catch(err => console.error('Mince, souci PWA:', err));
+}
